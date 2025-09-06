@@ -19,10 +19,6 @@ Endpoints:
 async def read_items(q: Optional[str] = Query(None, min_length=3, max_length=50, regex="^[a-zA-Z0-9 ]*$")):
     return {"query": q}
 
-# Query - as the default value
-@app.get("/items/")
-async def read_item(q: Optional[str] = Query(None, min_length=3, max_length=50, default=None)):
-    return {"query": q}
 
 # Add more validations using Annotated
 @app.get("/items/")
