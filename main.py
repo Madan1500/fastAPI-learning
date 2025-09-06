@@ -1,61 +1,65 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from pydantic import BaseModel
+from typing import Optional
 
 app = FastAPI()
 
-# Define the Pydantic model for the request body
+# Query Parameter Models
+class ItemQuery(BaseModel):
+    category: Optional[str] = None
+    price_min: Optional[float] = None
+    price_max: Optional[float] = None
+    sort_order: Optional[str] = None
 
-"""
-Classes:
-    Item(BaseModel): A Pydantic model representing an item with a name, price, and optional offer status.
-
-Endpoints:
-    @app.post("/items/"): Asynchronous endpoint to create an item and return its details.
-
-Functions:
-    create_item(item: Item): Receives an Item object and returns a dictionary with the item's name, price, and offer status.
-"""
-# This is a pydantic model which works as a schema for request body
-class Item(BaseModel):
-    name: str
-    price: float
-    is_offer: bool = None  
-
-@app.post("/items/")
-async def create_item(item: Item):
-    return {"item_name": item.name, "item_price": item.price, "is_offer": item.is_offer}
-
-# Request body + path parameters
-class Items(BaseModel):
-    name: str
-    description: str | None = None
-    price: float
-    tax: float | None = None
-
-
-"""
-Update an item with the given item_id.
-
-Args:
-    item_id (int): The ID of the item to update.
-    item (Item): The item data to update.
-
-Returns:
-    dict: A dictionary containing the item_id and the updated item data.
-"""
-@app.put("/items/{item_id}")
-async def update_item(item_id: int, item: Items):
-    return {"item_id": item_id, **item.dict()}
-
-# Request body + path + query parameters
-@app.put("/items/{item_id}")
-async def update_items(item_id: int, item: Items, q: str | None = None):
-    result = {"item_id": item_id, **item.dict()}
-    if q:
-        result.update({"q": q})
-    return result
-
+@app.get("/items/")
+async def read_items(query: ItemQuery = Depends()):
+    response = {
+        "category": query.category,
+        "price_min": query.price_min,
+        "price_max": query.price_max,
+        "sort_order": query.sort_order,
+    }
+    return response
 
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="127.0.0.1", port=8000)
+
+# Explaination
+"""
+    Retrieve a list of items based on optional query parameters for filtering and sorting.
+
+    Query Parameters:
+        - category (Optional[str]): Filter items by their category.
+        - price_min (Optional[float]): Return items priced greater than or equal to this value.
+        - price_max (Optional[float]): Return items priced less than or equal to this value.
+        - sort_order (Optional[str]): Specify sort order of the results. Acceptable values are 'asc' for ascending 
+          and 'desc' for descending.
+
+    Returns:
+        dict: A dictionary containing the filtered items and the applied query filters.
+            - category (Optional[str]): The filtered category or `None` if not specified.
+            - price_min (Optional[float]): The minimum price filter or `None` if not specified.
+            - price_max (Optional[float]): The maximum price filter or `None` if not specified.
+            - sort_order (Optional[str]): The sort order used or `None` if not specified.
+
+    Example:
+        Request:
+        ```
+        GET /items/?category=electronics&price_min=100&price_max=500&sort_order=asc
+        ```
+
+        Response:
+        ```
+        {
+            "category": "electronics",
+            "price_min": 100,
+            "price_max": 500,
+            "sort_order": "asc"
+        }
+        ```
+
+    Error Handling:
+        - Returns a 400 Bad Request if invalid query parameters are provided.
+        - Returns an empty response if no items match the filter criteria.
+    """
