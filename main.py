@@ -1,50 +1,38 @@
-from fastapi import FastAPI, Query
-from typing import Optional, Annotated,List
+from fastapi import Path, FastAPI, HTTPException  
+from typing import Annotated
 
 app = FastAPI()
 
-# Query Parameters and String Validations
+# Path Parameters and Numeric Validations
 
 """
-This example demonstrates how to use query parameters in FastAPI with various string validations.
+Endpoint to retrieve item details by item ID.
 
-Endpoints:
-- GET /items/:
-    - Query Parameters:
-        - q (Optional[str]): A query string that must be between 3 and 50 characters in length and can only contain alphanumeric characters and spaces.
-    - Responses:
-        - 200: A JSON object containing the query string.
+Path Parameters:
+- item_id (int): The ID of the item to retrieve. Must be a positive integer.
+
+Raises:
+- HTTPException: If the item_id is less than 1, a 400 status code with a detail message is raised.
+
+Returns:
+- dict: A dictionary containing the item ID and a description message.
 """
-@app.get("/items/")
-async def read_items(q: Optional[str] = Query(None, min_length=3, max_length=50, regex="^[a-zA-Z0-9 ]*$")):
-    return {"query": q}
+@app.get("/items/{item_id}")
+async def read_item(item_id: int):
+    if item_id < 1:
+        raise HTTPException(status_code=400, detail="Item ID must be a positive integer")
+    return {"item_id": item_id, "description": f"Details for item {item_id}"}
 
-
-# Add more validations using Annotated
-@app.get("/items/")
-async def read_item_(
-    q: Annotated[str | None, Query(min_length=3, max_length=50)] = None,
+@app.get("/items/{item_id}")
+async def read_items(
+    q: str, item_id: Annotated[int, Path(title="The ID of the item to get")]
 ):
-    results = {"items": [{"item_id": "Foo"}, {"item_id": "Bar"}]}
+    results = {"item_id": item_id}
     if q:
         results.update({"q": q})
     return results
-
-# Default values with Annotated
-@app.get("/users/")
-async def read_users(q: Annotated[str, Query(min_length=3)] = "fixedquery"):
-    results = {"users": [{"user_id": "Foo"}, {"user_id": "Bar"}]}
-    if q:
-        results.update({"q": q})
-    return results
-
-# Query parameter list / multiple values
-@app.get("/user/")
-async def read_users(q: Annotated[List[str] | None, Query()] = None):
-    query_users = {"q": q}
-    return query_users
 
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="127.0.0.1", port=8000)
