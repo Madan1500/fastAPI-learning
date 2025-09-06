@@ -1,73 +1,60 @@
 from fastapi import FastAPI
+from pydantic import BaseModel
 
 app = FastAPI()
 
+# Define the Pydantic model for the request body
+
 """
-This FastAPI application defines an endpoint to read items with pagination.
+Classes:
+    Item(BaseModel): A Pydantic model representing an item with a name, price, and optional offer status.
 
 Endpoints:
-- GET /items/
-  - Query Parameters:
-    - skip (int, optional): The number of items to skip. Default is 0.
-    - limit (int, optional): The maximum number of items to return. Default is 10.
-  - Response:
-    - JSON object containing the 'skip' and 'limit' values.
+    @app.post("/items/"): Asynchronous endpoint to create an item and return its details.
+
+Functions:
+    create_item(item: Item): Receives an Item object and returns a dictionary with the item's name, price, and offer status.
 """
+# This is a pydantic model which works as a schema for request body
+class Item(BaseModel):
+    name: str
+    price: float
+    is_offer: bool = None  
 
-@app.get("/items/")
-async def read_items(skip: int = 0, limit: int = 10):
-    return {"skip": skip, "limit": limit}
+@app.post("/items/")
+async def create_item(item: Item):
+    return {"item_name": item.name, "item_price": item.price, "is_offer": item.is_offer}
 
-# Query parameter type conversion
+# Request body + path parameters
+class Items(BaseModel):
+    name: str
+    description: str | None = None
+    price: float
+    tax: float | None = None
+
 
 """
-Endpoint to retrieve an item with optional query parameters.
+Update an item with the given item_id.
 
 Args:
-    item_id (str): The unique identifier for the item.
-    q (str, optional): An optional query string. Defaults to None.
-    short (bool, optional): A flag to determine if the item description should be short. Defaults to False.
+    item_id (int): The ID of the item to update.
+    item (Item): The item data to update.
 
 Returns:
-    dict: A dictionary containing the item details. If 'q' is provided, it will be included in the response. If 'short' is False, a long description will be included.
+    dict: A dictionary containing the item_id and the updated item data.
 """
-@app.get("/items/{item_id}")
-async def read_item(item_id: str, q: str | None = None, short: bool = False):
-    item = {"item_id": item_id}
+@app.put("/items/{item_id}")
+async def update_item(item_id: int, item: Items):
+    return {"item_id": item_id, **item.dict()}
+
+# Request body + path + query parameters
+@app.put("/items/{item_id}")
+async def update_items(item_id: int, item: Items, q: str | None = None):
+    result = {"item_id": item_id, **item.dict()}
     if q:
-        item.update({"q": q})
-    if not short:
-        item.update(
-            {"description": "This is an amazing item that has a long description"}
-        )
-    return item
+        result.update({"q": q})
+    return result
 
-# Multiple path and query parameters
-
-"""
-Endpoint to read a specific item owned by a user.
-
-Args:
-    user_id (int): The ID of the user.
-    item_id (str): The ID of the item.
-    q (str, optional): An optional query string. Defaults to None.
-    short (bool, optional): A flag to indicate if a short description is requested. Defaults to False.
-
-Returns:
-    dict: A dictionary containing item details including `item_id`, `owner_id`, and optionally `q` and `description`.
-"""
-@app.get("/users/{user_id}/items/{item_id}")
-async def read_user_item(
-    user_id: int, item_id: str, q: str | None = None, short: bool = False
-):
-    item = {"item_id": item_id, "owner_id": user_id}
-    if q:
-        item.update({"q": q})
-    if not short:
-        item.update(
-            {"description": "This is an amazing item that has a long description"}
-        )
-    return item
 
 if __name__ == "__main__":
     import uvicorn
